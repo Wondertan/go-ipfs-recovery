@@ -1,0 +1,13 @@
+syntax = "proto3";
+package corrector.pb;
+
+message PBNode {
+    bytes proto = 1;
+    repeated PBLink redundant = 2;
+}
+
+message PBLink {
+    bytes Hash = 1;
+    string Name = 2;
+    uint64 Size = 3;
+}

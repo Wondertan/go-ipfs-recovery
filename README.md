@@ -1,1 +1,1 @@
-# go-ipfs-corrector
+# go-ipfs-restore
