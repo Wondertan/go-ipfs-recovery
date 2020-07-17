@@ -35,6 +35,10 @@ func (r *restorer) Encode(ctx context.Context, nd format.Node) (format.Node, err
 		bs[i] = nd.RawData()
 	}
 
+	for i := 0; i < parity; i++ {
+		bs[len(ndps)+i] = make([]byte, len(bs[0]))
+	}
+
 	rs, err := reedsolomon.New(l, parity)
 	if err != nil {
 		return nil, err
