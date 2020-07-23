@@ -31,7 +31,7 @@ func TestNodeMarshalUnmarshal(t *testing.T) {
 
 	out.SetCidBuilder(in.CidBuilder())
 	assert.True(t, in.Cid().Equals(out.Cid()))
-	assert.True(t, red.Cid().Equals(in.redundant[0].Cid))
+	assert.Equal(t, in.Redundant(), out.Redundant())
 }
 
 func TestNodeDecode(t *testing.T) {
