@@ -140,6 +140,9 @@ func (n *Node) Stat() (*format.NodeStat, error) {
 
 func (n *Node) Size() (uint64, error) {
 	s := uint64(len(n.RawData()))
+	for _, l := range n.Links() {
+		s += l.Size
+	}
 	for _, l := range n.redundant {
 		s += l.Size
 	}
