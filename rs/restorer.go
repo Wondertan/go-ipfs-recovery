@@ -17,6 +17,13 @@ type restorer struct {
 	dag format.DAGService
 }
 
+func NewRestorer(ds format.DAGService) *restorer {
+	r := &restorer{
+		dag: ds,
+	}
+	return r
+}
+
 func (r *restorer) Encode(ctx context.Context, nd format.Node) (format.Node, error) {
 	pnd, err := ValidateNode(nd)
 	if err != nil {
