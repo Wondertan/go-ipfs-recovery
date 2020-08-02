@@ -18,6 +18,14 @@ type restorer struct {
 	dag format.DAGService
 }
 
+
+func NewRestorer(ds format.DAGService) *restorer {
+	r := &restorer{
+		dag: ds,
+	}
+	return r
+}
+
 func (r *restorer) Restore(ctx context.Context, id cid.Cid, tr ...cid.Cid) ([]format.Node, error) {
 	nd, err := r.dag.Get(ctx, id)
 	if err != nil {
@@ -72,6 +80,10 @@ func (r *restorer) Encode(ctx context.Context, id cid.Cid) (cid.Cid, error) {
 		}
 
 		bs[i] = nd.RawData()
+	}
+
+	for i := 0; i < parity; i++ {
+		bs[len(ndps)+i] = make([]byte, len(bs[0]))
 	}
 
 	rs, err := reedsolomon.New(l, parity)
