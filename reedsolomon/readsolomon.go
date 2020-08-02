@@ -32,7 +32,7 @@ func NewRestorer(dag format.DAGService) recovery.Recoverer {
 }
 
 // NewEncoder creates new Reed-Solomon Encoder.
-func NewEncoder(dag format.DAGService) recovery.Recoverer {
+func NewEncoder(dag format.DAGService) recovery.Encoder {
 	return &readsolomon{dag: dag}
 }
 

@@ -20,7 +20,8 @@ func TestNodeRedundant(t *testing.T) {
 
 func TestNodeMarshalUnmarshal(t *testing.T) {
 	in := NewNode(merkledag.NodeWithData([]byte("1234567890")))
-	in.AddRedundantNode(merkledag.NewRawNode([]byte("12345")))
+	red := merkledag.NewRawNode([]byte("12345"))
+	in.AddRedundantNode(red)
 
 	data, err := MarshalNode(in)
 	require.NoError(t, err)
@@ -30,6 +31,7 @@ func TestNodeMarshalUnmarshal(t *testing.T) {
 
 	out.SetCidBuilder(in.CidBuilder())
 	assert.True(t, in.Cid().Equals(out.Cid()))
+	assert.Equal(t, in.RecoveryLinks(), out.RecoveryLinks())
 }
 
 func TestNodeDecode(t *testing.T) {

@@ -22,12 +22,16 @@ func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recove
 	l := len(nd.Links())
 	bs := make([][]byte, l+r)
 	for i, ndp := range format.GetDAG(ctx, dag, nd) {
-		nd, err = ndp.Get(ctx)
+		nd, err := ndp.Get(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		bs[i] = nd.RawData()
+	}
+
+	for i := range bs[l:] {
+		bs[i+l] = make([]byte, nd.Links()[0].Size)
 	}
 
 	rs, err := reedsolomon.New(l, r)
