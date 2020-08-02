@@ -52,7 +52,6 @@ func (r *restorer) Restore(ctx context.Context, id cid.Cid, tr ...cid.Cid) ([]fo
 	}
 }
 
-// TODO Remove input node
 func (r *restorer) Encode(ctx context.Context, id cid.Cid) (cid.Cid, error) {
 	nd, err := r.dag.Get(ctx, id)
 	if err != nil {

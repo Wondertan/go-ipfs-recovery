@@ -6,7 +6,10 @@ import (
 
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("restore")
 
 var (
 	ErrNotRestorable = errors.New("restore: node must be restorable")
