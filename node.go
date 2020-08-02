@@ -25,6 +25,8 @@ func init() {
 	cid.CodecToStr[DagProtobufRestorable] = "protobuf-correction"
 }
 
+// Node is a restoring Node that wraps ProtoNode with redundant nodes.
+// They are used for reconstruction of missing nodes ProtoNode links to.
 type Node struct {
 	*merkledag.ProtoNode
 
@@ -140,6 +142,9 @@ func (n *Node) Stat() (*format.NodeStat, error) {
 
 func (n *Node) Size() (uint64, error) {
 	s := uint64(len(n.RawData()))
+	for _, l := range n.Links() {
+		s += l.Size
+	}
 	for _, l := range n.redundant {
 		s += l.Size
 	}
