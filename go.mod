@@ -10,5 +10,5 @@ require (
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/stretchr/testify v1.6.1
-	github.com/templexxx/reedsolomon v1.1.3 // indirect
+	github.com/templexxx/reedsolomon v1.1.3
 )
