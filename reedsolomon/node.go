@@ -1,48 +1,42 @@
-package restore
+package reedsolomon
 
 import (
 	"fmt"
 	"sort"
 	"strconv"
 
-	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 
-	cpb "github.com/Wondertan/go-ipfs-restore/pb"
+	"github.com/Wondertan/go-ipfs-recovery"
+	cpb "github.com/Wondertan/go-ipfs-recovery/reedsolomon/pb"
 )
 
-// DagProtobufRestorable is custom codec for the restorable node.
-const DagProtobufRestorable = 0x700
+// TODO Do not save sizes of all links independently as they are always the same.
 
-func init() {
-	// register global decoder
-	format.Register(DagProtobufRestorable, DecodeNode)
-
-	// register codec
-	cid.Codecs["protobuf-correction"] = DagProtobufRestorable
-	cid.CodecToStr[DagProtobufRestorable] = "protobuf-correction"
-}
-
-// Node is a restoring Node that wraps ProtoNode with redundant nodes.
-// They are used for reconstruction of missing nodes ProtoNode links to.
+// Node is a recovery Node based ob Reed-Solomon coding.
 type Node struct {
 	*merkledag.ProtoNode
 
-	redundant []*format.Link
-	cache     []byte
-	cid       cid.Cid
+	recovery []*format.Link
+	cache    []byte
+	cid      cid.Cid
 }
 
 func NewNode(proto *merkledag.ProtoNode) *Node {
 	nd := &Node{ProtoNode: proto.Copy().(*merkledag.ProtoNode)}
-	nd.SetCidBuilder(nd.CidBuilder().WithCodec(DagProtobufRestorable))
+	nd.SetCidBuilder(nd.CidBuilder().WithCodec(Codec))
 	return nd
 }
 
-func (n *Node) Redundant() []*format.Link {
-	return n.redundant
+func (n *Node) Recoverability() recovery.Recoverability {
+	return len(n.recovery)
+}
+
+func (n *Node) RecoveryLinks() []*format.Link {
+	return n.recovery
 }
 
 func (n *Node) AddRedundantNode(nd format.Node) {
@@ -51,8 +45,8 @@ func (n *Node) AddRedundantNode(nd format.Node) {
 	}
 
 	n.cache = nil
-	n.redundant = append(n.redundant, &format.Link{
-		Name: strconv.Itoa(len(n.redundant)),
+	n.recovery = append(n.recovery, &format.Link{
+		Name: strconv.Itoa(len(n.recovery)),
 		Size: uint64(len(nd.RawData())),
 		Cid:  nd.Cid(),
 	})
@@ -63,15 +57,15 @@ func (n *Node) RemoveRedundantNode(id cid.Cid) {
 		return
 	}
 
-	ref := n.redundant[:0]
-	for _, v := range n.redundant {
+	ref := n.recovery[:0]
+	for _, v := range n.recovery {
 		if v.Cid.Equals(id) {
 			n.cache = nil
 		} else {
 			ref = append(ref, v)
 		}
 	}
-	n.redundant = ref
+	n.recovery = ref
 }
 
 func (n *Node) RawData() []byte {
@@ -109,11 +103,11 @@ func (n *Node) String() string {
 func (n *Node) Copy() format.Node {
 	nd := new(Node)
 	nd.ProtoNode = n.ProtoNode.Copy().(*merkledag.ProtoNode)
-	l := len(n.redundant)
+	l := len(n.recovery)
 	if l > 0 {
-		nd.redundant = make([]*format.Link, l)
-		for i, r := range n.redundant {
-			nd.redundant[i] = &format.Link{
+		nd.recovery = make([]*format.Link, l)
+		for i, r := range n.recovery {
+			nd.recovery[i] = &format.Link{
 				Name: r.Name,
 				Size: r.Size,
 				Cid:  r.Cid,
@@ -145,7 +139,7 @@ func (n *Node) Size() (uint64, error) {
 	for _, l := range n.Links() {
 		s += l.Size
 	}
-	for _, l := range n.redundant {
+	for _, l := range n.recovery {
 		s += l.Size
 	}
 	return s, nil
@@ -159,12 +153,12 @@ func MarshalNode(n *Node) ([]byte, error) {
 		return nil, err
 	}
 
-	l := len(n.redundant)
+	l := len(n.recovery)
 	if l > 0 {
-		sort.Stable(merkledag.LinkSlice(n.redundant))
-		pb.Redundant = make([]*cpb.PBLink, l)
-		for i, r := range n.redundant {
-			pb.Redundant[i] = &cpb.PBLink{
+		sort.Stable(merkledag.LinkSlice(n.recovery))
+		pb.Recovery = make([]*cpb.PBLink, l)
+		for i, r := range n.recovery {
+			pb.Recovery[i] = &cpb.PBLink{
 				Name:  r.Name,
 				Size_: r.Size,
 				Hash:  r.Cid.Bytes(),
@@ -188,21 +182,21 @@ func UnmarshalNode(data []byte) (*Node, error) {
 		return nil, err
 	}
 
-	l := len(pb.Redundant)
+	l := len(pb.Recovery)
 	if l > 0 {
-		nd.redundant = make([]*format.Link, l)
-		for i, r := range pb.Redundant {
-			nd.redundant[i] = &format.Link{
+		nd.recovery = make([]*format.Link, l)
+		for i, r := range pb.Recovery {
+			nd.recovery[i] = &format.Link{
 				Name: r.Name,
 				Size: r.Size_,
 			}
 
-			nd.redundant[i].Cid, err = cid.Cast(r.Hash)
+			nd.recovery[i].Cid, err = cid.Cast(r.Hash)
 			if err != nil {
 				return nil, err
 			}
 		}
-		sort.Stable(merkledag.LinkSlice(nd.redundant))
+		sort.Stable(merkledag.LinkSlice(nd.recovery))
 	}
 
 	return nd, nil
@@ -210,7 +204,7 @@ func UnmarshalNode(data []byte) (*Node, error) {
 
 func DecodeNode(b blocks.Block) (format.Node, error) {
 	id := b.Cid()
-	if id.Prefix().Codec != DagProtobufRestorable {
+	if id.Prefix().Codec != Codec {
 		return nil, fmt.Errorf("can only decode restorable node")
 	}
 

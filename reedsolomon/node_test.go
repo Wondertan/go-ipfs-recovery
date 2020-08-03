@@ -1,9 +1,9 @@
-package restore
+package reedsolomon
 
 import (
 	"testing"
 
-	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,9 +13,9 @@ func TestNodeRedundant(t *testing.T) {
 	nd := NewNode(merkledag.NodeWithData([]byte("1234567890")))
 	r := merkledag.NewRawNode([]byte("12345"))
 	nd.AddRedundantNode(r)
-	assert.Len(t, nd.Redundant(), 1)
+	assert.Len(t, nd.RecoveryLinks(), 1)
 	nd.RemoveRedundantNode(r.Cid())
-	assert.Len(t, nd.Redundant(), 0)
+	assert.Len(t, nd.RecoveryLinks(), 0)
 }
 
 func TestNodeMarshalUnmarshal(t *testing.T) {
@@ -31,7 +31,7 @@ func TestNodeMarshalUnmarshal(t *testing.T) {
 
 	out.SetCidBuilder(in.CidBuilder())
 	assert.True(t, in.Cid().Equals(out.Cid()))
-	assert.Equal(t, in.Redundant(), out.Redundant())
+	assert.Equal(t, in.RecoveryLinks(), out.RecoveryLinks())
 }
 
 func TestNodeDecode(t *testing.T) {
@@ -64,6 +64,6 @@ func TestNode_Copy(t *testing.T) {
 	nd.SetData([]byte{})
 	nd.RemoveRedundantNode(r.Cid())
 
-	assert.NotNil(t, cp.(*Node).Redundant())
+	assert.NotNil(t, cp.(*Node).RecoveryLinks())
 	assert.NotNil(t, cp.(*Node).Data())
 }

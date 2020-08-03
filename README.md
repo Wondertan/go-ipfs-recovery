@@ -1,1 +1,1 @@
-# go-ipfs-restore
+# go-ipfs-recovery

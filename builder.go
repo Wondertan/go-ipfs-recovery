@@ -1,17 +1,17 @@
-package restore
+package recovery
 
 import (
 	"context"
 	"errors"
 
-	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-ipld-format"
 	fs "github.com/ipfs/go-unixfs"
 	"github.com/ipfs/go-unixfs/importer/helpers"
 )
 
 // Modified version of UnixFS's balanced DAG builder.
-func Layout(db *helpers.DagBuilderHelper, r Restorer) (format.Node, error) {
+func Layout(db *helpers.DagBuilderHelper, e Encoder) (format.Node, error) {
 	if db.Done() {
 		root, err := db.NewLeafNode(nil, fs.TFile)
 		if err != nil {
@@ -30,7 +30,7 @@ func Layout(db *helpers.DagBuilderHelper, r Restorer) (format.Node, error) {
 		newRoot := db.NewFSNodeOverDag(fs.TFile)
 		newRoot.AddChild(root, fileSize, db)
 
-		root, fileSize, err = fillNodeRec(db, r, newRoot, depth)
+		root, fileSize, err = fillNodeRec(db, e, newRoot, depth)
 		if err != nil {
 			return nil, err
 		}
@@ -39,7 +39,7 @@ func Layout(db *helpers.DagBuilderHelper, r Restorer) (format.Node, error) {
 	return root, db.Add(root)
 }
 
-func fillNodeRec(db *helpers.DagBuilderHelper, r Restorer, node *helpers.FSNodeOverDag, depth int) (filledNode format.Node, nodeFileSize uint64, err error) {
+func fillNodeRec(db *helpers.DagBuilderHelper, e Encoder, node *helpers.FSNodeOverDag, depth int) (filledNode format.Node, nodeFileSize uint64, err error) {
 	if depth < 1 {
 		return nil, 0, errors.New("attempt to fillNode at depth < 1")
 	}
@@ -56,7 +56,7 @@ func fillNodeRec(db *helpers.DagBuilderHelper, r Restorer, node *helpers.FSNodeO
 		if depth == 1 {
 			childNode, childFileSize, err = db.NewLeafDataNode(fs.TFile)
 		} else {
-			childNode, childFileSize, err = fillNodeRec(db, r, nil, depth-1)
+			childNode, childFileSize, err = fillNodeRec(db, e, nil, depth-1)
 		}
 		if err != nil {
 			return nil, 0, err
@@ -77,7 +77,7 @@ func fillNodeRec(db *helpers.DagBuilderHelper, r Restorer, node *helpers.FSNodeO
 	}
 
 	if node.NumChildren() == db.Maxlinks() {
-		filledNode, err = r.Encode(context.TODO(), filledNode)
+		filledNode, err = e.Encode(context.TODO(), filledNode, 4)
 		if err != nil {
 			return nil, 0, err
 		}
