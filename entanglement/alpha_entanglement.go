@@ -1,9 +1,10 @@
-package ae
+package entanglement
 
 import (
 	"context"
 	"fmt"
 
+	restore "github.com/Wondertan/go-ipfs-restore"
 	"github.com/Wondertan/go-ipfs-restore/rs"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
@@ -19,10 +20,14 @@ const (
 	p     = 1
 )
 
-func xorByteSlice(b1, b2 []byte) {
-
+func NewAlphaRestorer(ds format.DAGService) *AlphaRestorer {
+	r := &AlphaRestorer{
+		dag: ds,
+	}
+	return r
 }
-func XORByteSlice(a []byte, b []byte) ([]byte, error) {
+
+func xorByteSlice(a []byte, b []byte) ([]byte, error) {
 	if len(a) != len(b) {
 		return nil, fmt.Errorf("length of byte slices is not equivalent: %d != %d", len(a), len(b))
 	}
@@ -35,7 +40,9 @@ func XORByteSlice(a []byte, b []byte) ([]byte, error) {
 
 	return buf, nil
 }
+
 func (ar *AlphaRestorer) Encode(ctx context.Context, nd format.Node) (format.Node, error) {
+	// get protonode
 	pnd, err := rs.ValidateNode(nd)
 	if err != nil {
 		return nil, err
@@ -44,6 +51,7 @@ func (ar *AlphaRestorer) Encode(ctx context.Context, nd format.Node) (format.Nod
 	var nodes []format.Node
 	var reds [][]byte
 
+	// get all links of the node
 	nodes = append(nodes, nd)
 	ndps := format.GetDAG(ctx, ar.dag, pnd)
 	for _, ndp := range ndps {
@@ -55,22 +63,29 @@ func (ar *AlphaRestorer) Encode(ctx context.Context, nd format.Node) (format.Nod
 		nodes = append(nodes, nd)
 	}
 
+	// for all links, create an alpha entanglement
 	lastRedundancy := make([]byte, len(nodes[0].RawData()))
 
-	for _, node := range nodes {
-		red, err := XORByteSlice(lastRedundancy, node.RawData())
+	// n.b. how does this work in terms of ordering?
+	for _, linkedNode := range nodes {
+
+		red, err := xorByteSlice(lastRedundancy, linkedNode.RawData())
+		lastRedundancy = red
 		if err != nil {
 			return nil, err
 		}
 		reds = append(reds, red)
 
 		redNode := merkledag.NodeWithData(red)
-		nodeProto, err := rs.ValidateNode(node)
+
+		linkedNodeProto, err := rs.ValidateNode(linkedNode)
+
+		rnode := restore.NewNode(linkedNodeProto)
 		if err != nil {
 			return nil, err
 		}
 
-		nodeProto.AddNodeLink("redundancy", redNode)
+		rnode.AddRedundantNode(redNode)
 
 		ar.dag.Add(ctx, redNode)
 	}
