@@ -22,21 +22,21 @@ func init() {
 	cid.CodecToStr[Codec] = "recovery-reedsolomon"
 }
 
-type reedsolomon struct {
+type reedSolomon struct {
 	dag format.DAGService
 }
 
 // NewRestorer creates new Reed-Solomon Recoverer.
 func NewRestorer(dag format.DAGService) recovery.Recoverer {
-	return &reedsolomon{dag: dag}
+	return &reedSolomon{dag: dag}
 }
 
 // NewEncoder creates new Reed-Solomon Encoder.
 func NewEncoder(dag format.DAGService) recovery.Encoder {
-	return &reedsolomon{dag: dag}
+	return &reedSolomon{dag: dag}
 }
 
-func (rs *reedsolomon) Recover(ctx context.Context, nd recovery.Node, rids ...cid.Cid) ([]format.Node, error) {
+func (rs *reedSolomon) Recover(ctx context.Context, nd recovery.Node, rids ...cid.Cid) ([]format.Node, error) {
 	pnd, ok := nd.(*Node)
 	if !ok {
 		return nil, fmt.Errorf("reedsolomon: wrong Node type")
@@ -45,6 +45,6 @@ func (rs *reedsolomon) Recover(ctx context.Context, nd recovery.Node, rids ...ci
 	return Recover(ctx, rs.dag, pnd, rids...)
 }
 
-func (rs *reedsolomon) Encode(ctx context.Context, nd format.Node, r recovery.Recoverability) (recovery.Node, error) {
+func (rs *reedSolomon) Encode(ctx context.Context, nd format.Node, r recovery.Recoverability) (recovery.Node, error) {
 	return Encode(ctx, rs.dag, nd, r)
 }
