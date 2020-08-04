@@ -14,8 +14,6 @@ import (
 	cpb "github.com/Wondertan/go-ipfs-recovery/reedsolomon/pb"
 )
 
-// TODO Do not save sizes of all links independently as they are always the same.
-
 // Node is a recovery Node based ob Reed-Solomon coding.
 type Node struct {
 	*merkledag.ProtoNode
@@ -25,10 +23,15 @@ type Node struct {
 	cid      cid.Cid
 }
 
-func NewNode(proto *merkledag.ProtoNode) *Node {
-	nd := &Node{ProtoNode: proto.Copy().(*merkledag.ProtoNode)}
-	nd.SetCidBuilder(nd.CidBuilder().WithCodec(Codec))
-	return nd
+func NewNode(nd format.Node) (*Node, error) {
+	pnd, ok := nd.(*merkledag.ProtoNode)
+	if !ok {
+		return nil, fmt.Errorf("reedsolomon: Node must be proto")
+	}
+
+	rnd := &Node{ProtoNode: pnd.Copy().(*merkledag.ProtoNode)}
+	rnd.SetCidBuilder(rnd.CidBuilder().WithCodec(Codec))
+	return rnd, nil
 }
 
 func (n *Node) Recoverability() recovery.Recoverability {
@@ -46,7 +49,7 @@ func (n *Node) AddRedundantNode(nd format.Node) {
 
 	n.cache = nil
 	n.recovery = append(n.recovery, &format.Link{
-		Name: strconv.Itoa(len(n.recovery)),
+		Name: strconv.Itoa(len(n.recovery)), // TODO Do we need a name?
 		Size: uint64(len(nd.RawData())),
 		Cid:  nd.Cid(),
 	})

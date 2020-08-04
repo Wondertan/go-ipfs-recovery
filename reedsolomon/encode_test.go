@@ -28,19 +28,3 @@ func TestEncode(t *testing.T) {
 		assert.NotNil(t, r)
 	}
 }
-
-func TestValidateNode(t *testing.T) {
-	rnd := merkledag.NewRawNode([]byte("1234567890"))
-	err := ValidateNode(rnd)
-	assert.Error(t, err)
-
-	nd := merkledag.NodeWithData([]byte("1234567890"))
-	err = ValidateNode(nd)
-	assert.Error(t, err)
-
-	nd = merkledag.NodeWithData([]byte("1234567890"))
-	nd.AddNodeLink("link", merkledag.NodeWithData([]byte("123456789")))
-	nd.AddNodeLink("link", merkledag.NodeWithData([]byte("12345678")))
-	err = ValidateNode(nd)
-	assert.Error(t, err)
-}

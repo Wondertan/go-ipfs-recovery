@@ -10,7 +10,9 @@ import (
 )
 
 func TestNodeRedundant(t *testing.T) {
-	nd := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	nd, err := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	require.NoError(t, err)
+
 	r := merkledag.NewRawNode([]byte("12345"))
 	nd.AddRedundantNode(r)
 	assert.Len(t, nd.RecoveryLinks(), 1)
@@ -19,7 +21,9 @@ func TestNodeRedundant(t *testing.T) {
 }
 
 func TestNodeMarshalUnmarshal(t *testing.T) {
-	in := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	in, err := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	require.NoError(t, err)
+
 	red := merkledag.NewRawNode([]byte("12345"))
 	in.AddRedundantNode(red)
 
@@ -35,14 +39,18 @@ func TestNodeMarshalUnmarshal(t *testing.T) {
 }
 
 func TestNodeDecode(t *testing.T) {
-	in := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	in, err := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	require.NoError(t, err)
+
 	out, err := format.Decode(in)
 	require.NoError(t, err)
 	assert.True(t, in.Cid().Equals(out.Cid()))
 }
 
 func TestNodeCache(t *testing.T) {
-	nd := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	nd, err := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	require.NoError(t, err)
+
 	nd.AddRedundantNode(merkledag.NewRawNode([]byte("12345")))
 	assert.Zero(t, nd.cid)
 	assert.Nil(t, nd.cache)
@@ -56,7 +64,9 @@ func TestNodeCache(t *testing.T) {
 }
 
 func TestNode_Copy(t *testing.T) {
-	nd := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	nd, err := NewNode(merkledag.NodeWithData([]byte("1234567890")))
+	require.NoError(t, err)
+
 	r := merkledag.NewRawNode([]byte("12345"))
 	nd.AddRedundantNode(r)
 
