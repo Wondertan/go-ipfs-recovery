@@ -1,11 +1,10 @@
-package rs
+package reedsolomon
 
 import (
 	"context"
 	"testing"
 
-	restore "github.com/Wondertan/go-ipfs-restore"
-	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	"github.com/stretchr/testify/assert"
@@ -13,25 +12,25 @@ import (
 )
 
 func TestEncode(t *testing.T) {
-	// Arrange
+	ctx := context.Background()
+
 	in := merkledag.NodeWithData([]byte("1234567890"))
 	in2 := merkledag.NodeWithData([]byte("0987654321"))
 	in3 := merkledag.NodeWithData([]byte("1234509876"))
-	r := NewRestorer(dstest.Mock())
-	ctx := context.Background()
+
+	dag := dstest.Mock()
+	dag.AddMany(ctx, []format.Node{in, in2, in3})
+
+	e := NewEncoder(dag)
 	in.AddNodeLink("link", in2)
 	in.AddNodeLink("link", in3)
-	r.dag.AddMany(ctx, []format.Node{in, in2, in3})
 
-	// Act
-	nd, err := r.Encode(ctx, in)
-
-	rnd, ok := nd.(*restore.Node)
-
-	// Assert
-	for _, r := range rnd.Redundant() {
+	nd, err := e.Encode(ctx, in, 3)
+	rnd, ok := nd.(*Node)
+	for _, r := range rnd.RecoveryLinks() {
 		assert.NotNil(t, r)
 	}
+
 	require.NoError(t, err)
 	assert.NotNil(t, nd)
 	assert.NotEqual(t, in, nd)
@@ -51,10 +50,10 @@ func TestValidateNode(t *testing.T) {
 	protoNodeWithDiffLenLinks.AddNodeLink("link", link2)
 
 	// Act
-	_, err1 := ValidateNode(protoNode)
-	_, err2 := ValidateNode(protoNodeWithLink)
-	_, err3 := ValidateNode(rawNode)
-	_, err4 := ValidateNode(protoNodeWithDiffLenLinks)
+	err1 := ValidateNode(protoNode)
+	err2 := ValidateNode(protoNodeWithLink)
+	err3 := ValidateNode(rawNode)
+	err4 := ValidateNode(protoNodeWithDiffLenLinks)
 
 	// Assert
 	assert.Error(t, err1)

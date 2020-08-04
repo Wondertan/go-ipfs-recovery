@@ -1,4 +1,4 @@
-package restore
+package recovery
 
 import (
 	"context"
@@ -17,17 +17,17 @@ var FetchRedundant = false
 // remember reverse links to parents, unless DAGService interface is changed.
 type getter struct {
 	get format.NodeGetter
-	r   Restorer
+	r   Recoverer
 
-	parents map[cid.Cid]*Node
+	parents map[cid.Cid]Node
 	l       sync.Mutex
 }
 
-func NewNodeGetter(get format.NodeGetter, r Restorer) format.NodeGetter {
+func NewNodeGetter(get format.NodeGetter, r Recoverer) format.NodeGetter {
 	return &getter{
 		r:       r,
 		get:     get,
-		parents: make(map[cid.Cid]*Node),
+		parents: make(map[cid.Cid]Node),
 	}
 }
 
@@ -39,11 +39,11 @@ func (g *getter) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
 		return nil, err
 	case format.ErrNotFound:
 		prnt := g.getParent(id)
-		if !prnt.Defined() {
+		if prnt == nil {
 			return nil, err
 		}
 
-		nds, err := g.r.Restore(ctx, prnt, id)
+		nds, err := g.r.Recover(ctx, prnt, id)
 		if err != nil {
 			return nil, err
 		}
@@ -92,12 +92,12 @@ func (g *getter) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.Nod
 				// it is assumed that all the passed keys have a same parent, so it can be found by any key.
 				lost := lost.Keys()
 				prnt := g.getParent(lost[0])
-				if !prnt.Defined() {
+				if prnt == nil {
 					// if parent not found, we have nothing to do.
 					return
 				}
 
-				nds, err := g.r.Restore(ctx, prnt, lost...)
+				nds, err := g.r.Recover(ctx, prnt, lost...)
 				if err != nil {
 					// restoration is a DAG implementation detail, so no need to pass the error up, just log the failed attempt.
 					log.Infof("Restoration attempt failed with: %s", err)
@@ -125,12 +125,12 @@ func (g *getter) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.Nod
 
 // maybeParent caches the given node if it's a parent for possible future restorations.
 func (g *getter) maybeParent(nd format.Node) {
-	rn, ok := nd.(*Node)
+	rn, ok := nd.(Node)
 	if !ok {
 		return
 	}
 
-	cp := rn.Copy().(*Node) // it is better to make a copy here, since node can be altered by the caller.
+	cp := rn.Copy().(Node) // it is better to make a copy here, since node can be altered by the caller.
 
 	g.l.Lock()
 	g.parents[rn.Cid()] = cp
@@ -142,9 +142,9 @@ func (g *getter) maybeParent(nd format.Node) {
 }
 
 // fetchRedundant triggers fetching of redundant nodes linked to parent.
-func (g *getter) fetchRedundant(nd *Node) {
-	ids := make([]cid.Cid, len(nd.Redundant()))
-	for i, l := range nd.Redundant() {
+func (g *getter) fetchRedundant(nd Node) {
+	ids := make([]cid.Cid, len(nd.RecoveryLinks()))
+	for i, l := range nd.RecoveryLinks() {
 		ids[i] = l.Cid
 	}
 
@@ -158,7 +158,7 @@ func (g *getter) fetchRedundant(nd *Node) {
 }
 
 // getParent tries to find the parent gotten within the getter for the given CID.
-func (g *getter) getParent(id cid.Cid) cid.Cid {
+func (g *getter) getParent(id cid.Cid) Node {
 	g.l.Lock()
 	defer g.l.Unlock()
 
@@ -167,10 +167,10 @@ func (g *getter) getParent(id cid.Cid) cid.Cid {
 			if l.Cid.Equals(id) {
 				// restoration reconstructs all linked nodes at once hence parent can't be reused, so uncache it.
 				delete(g.parents, p)
-				return p
+				return n
 			}
 		}
 	}
 
-	return cid.Undef
+	return nil
 }

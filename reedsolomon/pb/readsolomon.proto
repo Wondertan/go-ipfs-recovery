@@ -1,9 +1,9 @@
 syntax = "proto3";
-package corrector.pb;
+package recovery.pb;
 
 message PBNode {
     bytes proto = 1;
-    repeated PBLink redundant = 2;
+    repeated PBLink recovery = 2;
 }
 
 message PBLink {
