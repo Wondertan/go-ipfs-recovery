@@ -10,6 +10,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.1.1
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-unixfs v0.2.4
+	github.com/multiformats/go-multihash v0.0.13
 	github.com/stretchr/testify v1.6.1
 	github.com/templexxx/reedsolomon v1.1.3
 )

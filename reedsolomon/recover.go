@@ -6,9 +6,10 @@ import (
 	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
+	"github.com/multiformats/go-multihash"
 	"github.com/templexxx/reedsolomon"
 
-	 "github.com/Wondertan/go-ipfs-recovery"
+	"github.com/Wondertan/go-ipfs-recovery"
 )
 
 // Recover tries to recompute all lost IPLD Nodes using Reed-Solomon coded recovery Node.
@@ -24,8 +25,8 @@ outer:
 		// exclude known lost ids.
 		for _, id := range lost {
 			if l.Cid.Equals(id) {
-				ids[i] = cid.Undef
-				break outer
+				ids[i] = wrongCid // this is needed to fail blockservice cid validation.
+				continue outer
 			}
 		}
 
@@ -72,7 +73,7 @@ outer:
 	nds := make([]format.Node, 0, len(lost))
 	for _, i := range nlst {
 		id := ids[i]
-		if !id.Defined() {
+		if id.Equals(wrongCid) {
 			id = pnd.Links()[i].Cid
 		}
 
@@ -87,10 +88,17 @@ outer:
 			return nil, err
 		}
 
-		if !ids[i].Defined() {
+		if ids[i].Equals(wrongCid) {
 			nds = append(nds, nd)
 		}
 	}
 
 	return nds, nil
 }
+
+var wrongCid, _ = cid.Prefix{
+	Version:  1,
+	Codec:    1,
+	MhType:   multihash.IDENTITY,
+	MhLength: 1,
+}.Sum([]byte("f"))
