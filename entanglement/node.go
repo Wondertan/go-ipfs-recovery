@@ -26,18 +26,19 @@ const (
 type Node struct {
 	*merkledag.ProtoNode
 
-	// represents position of node in entanglement lattice
-	Position int
+	Position int // position of node in lattice
 
 	Inputs  map[int]*format.Link // left->0, horizontal->1, right->2
 	Outputs map[int]*format.Link // left->0, horizontal->1, right->2
-	cache   []byte
-	cid     cid.Cid
+
+	cache []byte
+	cid   cid.Cid
 }
 
-func NewNode(proto *merkledag.ProtoNode) *Node {
+func NewNode(proto *merkledag.ProtoNode, pos int) *Node {
 	nd := &Node{ProtoNode: proto.Copy().(*merkledag.ProtoNode)}
 	nd.SetCidBuilder(nd.CidBuilder().WithCodec(Codec))
+	nd.Position = pos
 	return nd
 }
 
@@ -237,7 +238,7 @@ func UnmarshalNode(data []byte) (*Node, error) {
 		return nil, err
 	}
 
-	l := len(pb.Recovery)
+	// l := len(pb.Recovery)
 	// if l > 0 {
 	// nd.recovery = make([]*format.Link, l)
 	// for i, r := range pb.Recovery {
