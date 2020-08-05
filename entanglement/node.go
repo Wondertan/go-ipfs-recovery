@@ -16,19 +16,23 @@ import (
 
 // TODO Do not save sizes of all links independently as they are always the same.
 
-// Node is a recovery Node based ob Reed-Solomon coding.
+const (
+	alpha = 3
+	s     = 5
+	p     = 5
+)
+
+// Node is a recovery Node based on Entanglement coding.
 type Node struct {
 	*merkledag.ProtoNode
-	Left       []*Block
-	Right      []*Block
-	Position   int
-	Data       []byte
-	Class      StrandClass
-	Identifier string
 
-	// recovery []*format.Link
-	cache []byte
-	cid   cid.Cid
+	// represents position of node in entanglement lattice
+	Position int
+
+	Inputs  map[int]*format.Link // left->0, horizontal->1, right->2
+	Outputs map[int]*format.Link // left->0, horizontal->1, right->2
+	cache   []byte
+	cid     cid.Cid
 }
 
 func NewNode(proto *merkledag.ProtoNode) *Node {
@@ -38,24 +42,44 @@ func NewNode(proto *merkledag.ProtoNode) *Node {
 }
 
 func (n *Node) Recoverability() recovery.Recoverability {
-	return len(n.recovery)
+	return alpha
 }
 
 func (n *Node) RecoveryLinks() []*format.Link {
-	return n.recovery
+	var rls []*format.Link
+
+	for _, v := range n.Outputs {
+		rls = append(rls, v)
+	}
+
+	return rls
 }
 
+// Don't use
 func (n *Node) AddRedundantNode(nd format.Node) {
 	if nd == nil {
 		return
 	}
 
+	if len(n.Outputs) == 3 {
+		return // error?
+	}
+
 	n.cache = nil
-	n.recovery = append(n.recovery, &format.Link{
-		Name: strconv.Itoa(len(n.recovery)),
-		Size: uint64(len(nd.RawData())),
-		Cid:  nd.Cid(),
-	})
+}
+
+func (n *Node) GetInputs() (ins []*format.Link) {
+	for _, v := range n.Inputs {
+		ins = append(ins, v)
+	}
+	return
+}
+
+func (n *Node) GetOutputs() (ins []*format.Link) {
+	for _, v := range n.Inputs {
+		ins = append(ins, v)
+	}
+	return
 }
 
 func (n *Node) RemoveRedundantNode(id cid.Cid) {
@@ -63,15 +87,20 @@ func (n *Node) RemoveRedundantNode(id cid.Cid) {
 		return
 	}
 
-	ref := n.recovery[:0]
-	for _, v := range n.recovery {
+	for k, v := range n.Inputs {
 		if v.Cid.Equals(id) {
+			delete(n.Inputs, k)
 			n.cache = nil
-		} else {
-			ref = append(ref, v)
+			return
 		}
 	}
-	n.recovery = ref
+	for k, v := range n.Outputs {
+		if v.Cid.Equals(id) {
+			delete(n.Outputs, k)
+			n.cache = nil
+			return
+		}
+	}
 }
 
 func (n *Node) RawData() []byte {
@@ -103,23 +132,39 @@ func (n *Node) Cid() cid.Cid {
 }
 
 func (n *Node) String() string {
-	return n.Cid().String()
+	return "CID: " + n.Cid().String() + "; Position: " + strconv.FormatInt(int64(n.Position), 10)
 }
 
 func (n *Node) Copy() format.Node {
 	nd := new(Node)
 	nd.ProtoNode = n.ProtoNode.Copy().(*merkledag.ProtoNode)
-	l := len(n.recovery)
-	if l > 0 {
-		nd.recovery = make([]*format.Link, l)
-		for i, r := range n.recovery {
-			nd.recovery[i] = &format.Link{
+	lIn := len(n.Inputs)
+	if lIn > 0 {
+		nd.Inputs = make(map[int]*format.Link, lIn)
+		for i := 0; i <= lIn; i++ {
+			r := n.Inputs[i]
+			nd.Inputs[i] = &format.Link{
 				Name: r.Name,
 				Size: r.Size,
 				Cid:  r.Cid,
 			}
 		}
 	}
+
+	lOut := len(n.Outputs)
+	if lOut > 0 {
+		nd.Outputs = make(map[int]*format.Link, lOut)
+		for i := 0; i <= lOut; i++ {
+			r := n.Inputs[i]
+			nd.Outputs[i] = &format.Link{
+				Name: r.Name,
+				Size: r.Size,
+				Cid:  r.Cid,
+			}
+		}
+	}
+
+	nd.Position = n.Position
 
 	return nd
 }
@@ -145,7 +190,10 @@ func (n *Node) Size() (uint64, error) {
 	for _, l := range n.Links() {
 		s += l.Size
 	}
-	for _, l := range n.recovery {
+	for _, l := range n.GetInputs() {
+		s += l.Size
+	}
+	for _, l := range n.GetOutputs() {
 		s += l.Size
 	}
 	return s, nil
@@ -159,11 +207,12 @@ func MarshalNode(n *Node) ([]byte, error) {
 		return nil, err
 	}
 
-	l := len(n.recovery)
+	l := len(n.Inputs) + len(n.Outputs)
 	if l > 0 {
-		sort.Stable(merkledag.LinkSlice(n.recovery))
+		recovery := append(n.GetInputs(), n.GetOutputs()...)
+		sort.Stable(merkledag.LinkSlice(recovery))
 		pb.Recovery = make([]*cpb.PBLink, l)
-		for i, r := range n.recovery {
+		for i, r := range recovery {
 			pb.Recovery[i] = &cpb.PBLink{
 				Name:  r.Name,
 				Size_: r.Size,
@@ -189,21 +238,21 @@ func UnmarshalNode(data []byte) (*Node, error) {
 	}
 
 	l := len(pb.Recovery)
-	if l > 0 {
-		nd.recovery = make([]*format.Link, l)
-		for i, r := range pb.Recovery {
-			nd.recovery[i] = &format.Link{
-				Name: r.Name,
-				Size: r.Size_,
-			}
+	// if l > 0 {
+	// nd.recovery = make([]*format.Link, l)
+	// for i, r := range pb.Recovery {
+	// nd.recovery[i] = &format.Link{
+	// Name: r.Name,
+	// Size: r.Size_,
+	// }
 
-			nd.recovery[i].Cid, err = cid.Cast(r.Hash)
-			if err != nil {
-				return nil, err
-			}
-		}
-		sort.Stable(merkledag.LinkSlice(nd.recovery))
-	}
+	// nd.recovery[i].Cid, err = cid.Cast(r.Hash)
+	// if err != nil {
+	// return nil, err
+	// }
+	// }
+	// sort.Stable(merkledag.LinkSlice(nd.recovery))
+	// }
 
 	return nd, nil
 }

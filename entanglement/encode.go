@@ -4,46 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	restore "github.com/Wondertan/go-ipfs-restore"
-	"github.com/Wondertan/go-ipfs-restore/rs"
+	recovery "github.com/Wondertan/go-ipfs-recovery"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 )
 
-type AlphaRestorer struct {
-	dag format.DAGService
-}
-
-const (
-	alpha = 1
-	s     = 1
-	p     = 1
-)
-
-func NewAlphaRestorer(ds format.DAGService) *AlphaRestorer {
-	r := &AlphaRestorer{
-		dag: ds,
-	}
-	return r
-}
-
-func xorByteSlice(a []byte, b []byte) ([]byte, error) {
-	if len(a) != len(b) {
-		return nil, fmt.Errorf("length of byte slices is not equivalent: %d != %d", len(a), len(b))
-	}
-
-	buf := make([]byte, len(a))
-
-	for i, _ := range a {
-		buf[i] = a[i] ^ b[i]
-	}
-
-	return buf, nil
-}
-
-func (ar *AlphaRestorer) Encode(ctx context.Context, nd format.Node) (format.Node, error) {
+func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recovery.Recoverability) (*Node, error) {
 	// get protonode
-	pnd, err := rs.ValidateNode(nd)
+	err := ValidateNode(nd)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +21,7 @@ func (ar *AlphaRestorer) Encode(ctx context.Context, nd format.Node) (format.Nod
 
 	// get all links of the node
 	nodes = append(nodes, nd)
-	ndps := format.GetDAG(ctx, ar.dag, pnd)
+	ndps := format.GetDAG(ctx, dag, nd)
 	for _, ndp := range ndps {
 		nd, err = ndp.Get(ctx)
 		if err != nil {
@@ -91,4 +59,40 @@ func (ar *AlphaRestorer) Encode(ctx context.Context, nd format.Node) (format.Nod
 	}
 
 	return pnd, nil
+}
+
+// ValidateNode checks whenever the given IPLD Node can be applied with Reed-Solomon coding.
+func ValidateNode(nd format.Node) error {
+	_, ok := nd.(*merkledag.ProtoNode)
+	if !ok {
+		return fmt.Errorf("reedsolomon: node must be proto")
+	}
+
+	ls := nd.Links()
+	if len(ls) == 0 {
+		return fmt.Errorf("reedsolomon: node must have links")
+	}
+
+	size := ls[0].Size
+	for _, l := range ls[1:] {
+		if l.Size != size {
+			return fmt.Errorf("reedsolomon: node's links must have equal size")
+		}
+	}
+
+	return nil
+}
+
+func xorByteSlice(a []byte, b []byte) ([]byte, error) {
+	if len(a) != len(b) {
+		return nil, fmt.Errorf("length of byte slices is not equivalent: %d != %d", len(a), len(b))
+	}
+
+	buf := make([]byte, len(a))
+
+	for i, _ := range a {
+		buf[i] = a[i] ^ b[i]
+	}
+
+	return buf, nil
 }
