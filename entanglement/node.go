@@ -1,6 +1,7 @@
 package entanglement
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -16,11 +17,33 @@ import (
 
 // TODO Do not save sizes of all links independently as they are always the same.
 
-const (
-	alpha = 3
-	s     = 5
-	p     = 5
-)
+type RedundantNode struct {
+	*merkledag.ProtoNode
+
+	Position [2]int // from, to lattice pos
+}
+
+func NewRedundantNode(n *merkledag.ProtoNode) *RedundantNode {
+	nd := &RedundantNode{ProtoNode: n.Copy().(*merkledag.ProtoNode)}
+	nd.SetCidBuilder(nd.CidBuilder().WithCodec(Codec))
+	return nd
+}
+
+func (r *RedundantNode) AddRedundantNode(n *Node, prev *RedundantNode, strand int) error {
+	data, _ := XORByteSlice(n.Data(), prev.Data())
+	r.SetData(data)
+	switch strand {
+	case LH:
+		r.Position = [2]int{n.Position, nextEntangleNode(n.Position, LH)}
+	case RH:
+		r.Position = [2]int{n.Position, nextEntangleNode(n.Position, RH)}
+	case H:
+		r.Position = [2]int{n.Position, nextEntangleNode(n.Position, H)}
+	default:
+		return errors.New("Strand must be LH=0,H=1,RH=2")
+	}
+	return nil
+}
 
 // Node is a recovery Node based on Entanglement coding.
 type Node struct {
