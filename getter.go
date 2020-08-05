@@ -45,7 +45,8 @@ func (g *getter) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
 
 		nds, err := g.r.Recover(ctx, prnt, id)
 		if err != nil {
-			return nil, err
+			log.Infof("Restoration attempt failed with: %s", err)
+			return nil, format.ErrNotFound
 		}
 
 		nd = nds[0]
