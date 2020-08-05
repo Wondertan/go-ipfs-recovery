@@ -23,9 +23,10 @@ type RedundantNode struct {
 	Position [2]int // from, to lattice pos
 }
 
-func NewRedundantNode(n *merkledag.ProtoNode) *RedundantNode {
+func NewRedundantNode(n *merkledag.ProtoNode, pos [2]int) *RedundantNode {
 	nd := &RedundantNode{ProtoNode: n.Copy().(*merkledag.ProtoNode)}
 	nd.SetCidBuilder(nd.CidBuilder().WithCodec(Codec))
+	nd.Position = pos
 	return nd
 }
 

@@ -28,7 +28,7 @@ type entangler struct {
 	Length       int                // length of all nodes in the DAG
 	LTbl         map[int]cid.Cid    // Lookup Table for lattice position
 	Parities     map[[2]int]cid.Cid // Lookup table for parity [from pos, to pos]
-	ParityMemory [15][]byte         // 5 left strands + 5 right + 5 horizontal
+	ParityMemory [15]*RedundantNode // 5 left strands + 5 right + 5 horizontal
 }
 
 // orderDagNode gives a lattice position to all nodes in the DAG
@@ -41,7 +41,6 @@ func (ent *entangler) orderDagNode(nd format.Node) error {
 
 	for _, l := range nd.Links() {
 		c, err := ent.dag.Get(ctx, l.Cid)
-		fmt.Println(l.Cid)
 		if err != nil {
 			return err
 		}
@@ -94,67 +93,38 @@ func (ent *entangler) updateParities(ctx context.Context, r, h, l *RedundantNode
 	ent.dag.AddMany(ctx, []format.Node{r, h, l})
 }
 
-func (ent *entangler) entangle(nd *Node, rnd *RedundantNode, i int) {
-	// r, h, l := GetMemoryPosition(i)
-	// rBack, hBack, lBack := GetBackwardNeighbours(i)
-	// rParity := ent.ParityMemory[r]
-	// hParity := ent.ParityMemory[h]
-	// lParity := ent.ParityMemory[l]
+func (ent *entangler) entangle(ctx context.Context, nd *Node, i int) {
+	r, h, l := GetMemoryPosition(i)
+	rBack, hBack, lBack := GetBackwardNeighbours(i)
+	rParity := ent.ParityMemory[r]
+	hParity := ent.ParityMemory[h]
+	lParity := ent.ParityMemory[l]
 
-	// rnd.AddRedundantNode(nd,)
-	// WriteChunkToFile(rParity, rBack, index)
-	// WriteChunkToFile(hParity, hBack, index)
-	// WriteChunkToFile(lParity, lBack, index)
+	rNext, _ := XORByteSlice(nd.RawData(), rParity.Data())
+	rnd := NewRedundantNode(merkledag.NodeWithData(rNext), [2]int{rBack, i})
+	ent.ParityMemory[r] = rnd
 
-	// rNext, _ := XORByteSlice(datachunk, rParity)
-	// ent.ParityMemory[r] = rNext
+	hNext, _ := XORByteSlice(nd.RawData(), hParity.Data())
+	hnd := NewRedundantNode(merkledag.NodeWithData(hNext), [2]int{hBack, i})
+	ent.ParityMemory[r] = hnd
 
-	// hNext, _ := XORByteSlice(datachunk, hParity)
-	// ent.ParityMemory[h] = hNext
+	lNext, _ := XORByteSlice(nd.RawData(), lParity.Data())
+	lnd := NewRedundantNode(merkledag.NodeWithData(lNext), [2]int{lBack, i})
+	ent.ParityMemory[r] = lnd
+	fmt.Println(rnd.Cid(), hnd.Cid(), lnd.Cid())
 
-	// lNext, _ := XORByteSlice(datachunk, lParity)
-	// ent.ParityMemory[l] = lNext
+	ent.dag.AddMany(ctx, []format.Node{rnd, hnd, lnd})
 }
 
 // EncodeDag creates an entangled lattice of redundancies
 func (ent *entangler) EncodeDag(ctx context.Context) error {
-	nd, err := ent.dag.Get(ctx, ent.LTbl[1])
-	if err != nil {
-		return err
-	}
-
-	ent.Parities = make(map[[2]int]cid.Cid)
-
-	rPrev := NewRedundantNode(merkledag.NodeWithData(make([]byte, len(nd.RawData()))))
-	rPrev.Position = [2]int{1, nextEntangleNode(1, RH)}
-
-	hPrev := NewRedundantNode(merkledag.NodeWithData(make([]byte, len(nd.RawData()))))
-	hPrev.Position = [2]int{1, nextEntangleNode(1, H)}
-
-	lPrev := NewRedundantNode(merkledag.NodeWithData(make([]byte, len(nd.RawData()))))
-	lPrev.Position = [2]int{1, nextEntangleNode(1, LH)}
-
-	ent.updateParities(ctx, rPrev, hPrev, lPrev)
-
 	for i := 1; i < ent.Length; i++ {
-		nd, err := ent.dag.Get(ctx, ent.LTbl[i+1])
+		nd, err := ent.dag.Get(ctx, ent.LTbl[1])
 		if err != nil {
 			return err
 		}
-
-		r := NewRedundantNode(merkledag.NodeWithData([]byte{}))
-		r.AddRedundantNode(nd.(*Node), rPrev, RH)
-
-		h := NewRedundantNode(merkledag.NodeWithData([]byte{}))
-		h.AddRedundantNode(nd.(*Node), hPrev, H)
-
-		l := NewRedundantNode(merkledag.NodeWithData([]byte{}))
-		l.AddRedundantNode(nd.(*Node), lPrev, LH)
-
-		ent.updateParities(ctx, r, h, l)
-		rPrev = r
-		hPrev = h
-		lPrev = l
+		fmt.Println("BRHKBA")
+		ent.entangle(ctx, nd.(*Node), i)
 	}
 
 	return nil
