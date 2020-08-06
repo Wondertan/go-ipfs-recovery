@@ -6,8 +6,7 @@ import (
 
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
-	"github.com/templexxx/reedsolomon"
-	"golang.org/x/tools/godoc/redirect"
+	"github.com/multiformats/go-varint"
 
 	recovery "github.com/Wondertan/go-ipfs-recovery"
 )
@@ -15,45 +14,52 @@ import (
 // Encode applies Reed-Solomon coding on the given IPLD Node promoting it to a recovery Node.
 // Use `r` to specify needed amount of generated recovery Nodes.
 func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recovery.Recoverability) (*Node, error) {
-	err := ValidateNode(nd)
-	if err != nil {
-		return nil, err
-	}
-
+	var err error
 	ls := nd.Links()
 	rd := NewNode(nd.(*merkledag.ProtoNode))
 
-	nd1, err := ls[0].GetNode(ctx, dag)
-	if err != nil {
-		return nil, err
+	nds, s := make([]format.Node, len(rd.Links())), 0
+	for i, l := range rd.Links() {
+		nds[i], err = l.GetNode(ctx, dag)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(nds[i].RawData()) > s { // finding the largest child
+			s = len(nds[i].RawData())
+		}
 	}
 
-	// create 1st redundancy and add to dag, recovery
-	red := merkledag.NewRawNode(nd1.RawData())
-	err = dag.Add(ctx, red)
-	if err != nil {
-		return nil, err
+	// encode size of redundant data
+	s += varint.UvarintSize(uint64(s))
+	ln := len(ls)
+	bs := make([][]byte, ln*2)
+	for i := range bs {
+		bs[i] = make([]byte, s)
+		if i < ln {
+			l := len(nds[i].RawData())
+			n := varint.PutUvarint(bs[i], uint64(l))
+			copy(bs[i][n:], nds[i].RawData())
+		}
 	}
-	rd.AddRedundantNode(red)
 
-	for i := 1; i < len(ls); i++ {
-		nd1, err = ls[i].GetNode(ctx, dag)
-		if err != nil {
-			return nil, err
+	for i, b := range bs[ln:] {
+		if i == 0 {
+			b = bs[0]
+		} else {
+			b, err = XORByteSlice(bs[ln+i], bs[i])
+			if err != nil {
+				return nil, err
+			}
 		}
-		bs, err := XORByteSlice(nd1.RawData(), red.RawData())
+
+		rnd := merkledag.NewRawNode(b)
+		err = dag.Add(ctx, rnd)
 		if err != nil {
 			return nil, err
 		}
 
-		// create 1st redundancy and add to dag, recovery
-		red = merkledag.NewRawNode(bs)
-		err = dag.Add(ctx, red)
-		if err != nil {
-			return nil, err
-		}
-		// add link in order of redundancy value
-		rd.AddRedundantNode(red)
+		rd.AddRedundantNode(rnd)
 	}
 
 	err = dag.Add(ctx, rd)
@@ -64,24 +70,17 @@ func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recove
 	return rd, dag.Remove(ctx, nd.Cid())
 }
 
-// ValidateNode checks whenever the given IPLD Node can be applied with Reed-Solomon coding.
-func ValidateNode(nd format.Node) error {
-	_, ok := nd.(*merkledag.ProtoNode)
-	if !ok {
-		return fmt.Errorf("entanglement: node must be proto")
+// XORByteSlice returns an XOR slice of 2 input slices
+func XORByteSlice(a []byte, b []byte) ([]byte, error) {
+	if len(a) != len(b) {
+		return nil, fmt.Errorf("length of byte slices is not equivalent: %d != %d", len(a), len(b))
 	}
 
-	ls := nd.Links()
-	if len(ls) == 0 {
-		return fmt.Errorf("entanglement: node must have links")
+	buf := make([]byte, len(a))
+
+	for i, _ := range a {
+		buf[i] = a[i] ^ b[i]
 	}
 
-	size := ls[0].Size
-	for _, l := range ls[1:] {
-		if l.Size != size {
-			return fmt.Errorf("entanglement: node's links must have equal size")
-		}
-	}
-
-	return nil
+	return buf, nil
 }

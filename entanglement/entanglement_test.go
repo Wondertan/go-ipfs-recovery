@@ -1,42 +1,83 @@
 package entanglement
 
-import (
-	"context"
-	"testing"
+// import (
+// 	"context"
+// 	"testing"
 
-	format "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
-	dstest "github.com/ipfs/go-merkledag/test"
-	assert "github.com/stretchr/testify/assert"
-)
+// 	format "github.com/ipfs/go-ipld-format"
+// 	"github.com/ipfs/go-merkledag"
+// 	dstest "github.com/ipfs/go-merkledag/test"
+// 	"github.com/stretchr/testify/assert"
+// 	"github.com/stretchr/testify/require"
 
-func TestNewEncoder(t *testing.T) {
-	// Arrange
-	in := merkledag.NodeWithData([]byte("1234567890"))
-	in2 := merkledag.NodeWithData([]byte("0987654321"))
-	in3 := merkledag.NodeWithData([]byte("1234509876"))
-	in4 := merkledag.NodeWithData([]byte("0192837465"))
-	in5 := merkledag.NodeWithData([]byte("0392817465"))
-	dag := dstest.Mock()
-	ctx := context.Background()
-	in3.AddNodeLink("link", in4)
-	in2.AddNodeLink("link", in5)
-	in.AddNodeLink("link", in2)
-	in.AddNodeLink("link", in3)
+// 	recovery "github.com/Wondertan/go-ipfs-recovery"
+// 	"github.com/Wondertan/go-ipfs-recovery/test"
+// )
 
-	dag.AddMany(ctx, []format.Node{in, in2, in3, in4, in5})
+// func TestEncodeRecover(t *testing.T) {
+// 	ctx := context.Background()
+// 	dag := dstest.Mock()
 
-	// Act
-	enc, err := NewEncoder(dag, in)
+// 	in := merkledag.NodeWithData([]byte("1234567890"))
+// 	in2 := merkledag.NodeWithData([]byte("03243423423423"))
+// 	in3 := merkledag.NodeWithData([]byte("123450"))
+// 	in4 := merkledag.NodeWithData([]byte("1234509876"))
+// 	in.AddNodeLink("link", in2)
+// 	in.AddNodeLink("link", in3)
+// 	in.AddNodeLink("link", in4)
+// 	dag.AddMany(ctx, []format.Node{in, in2, in3, in4})
 
-	// Assert
-	assert.Nil(t, err)
-	assert.NotNil(t, enc)
+// 	enc, err := Encode(ctx, dag, in, 2)
+// 	require.NoError(t, err)
 
-	ent := enc.(*entangler)
+// 	dag.Remove(ctx, in2.Cid())
+// 	dag.Remove(ctx, in4.Cid())
 
-	assert.Equal(t, ent.Length, 5)
-	for i := 0; i < ent.Length; i++ {
-		assert.NotNil(t, ent.LTbl[i+1])
-	}
-}
+// 	out, err := Recover(ctx, dag, enc, in2.Cid(), in4.Cid())
+// 	require.NoError(t, err)
+// 	assert.Equal(t, in2.RawData(), out[0].RawData())
+// 	assert.Equal(t, in4.RawData(), out[1].RawData())
+
+// 	out2, err := dag.Get(ctx, in2.Cid())
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, in2.RawData(), out2.RawData())
+
+// 	out4, err := dag.Get(ctx, in4.Cid())
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, in4.RawData(), out4.RawData())
+// }
+
+// func TestUnixFS(t *testing.T) {
+// 	ctx := context.Background()
+// 	dag := dstest.Mock()
+// 	dr := test.NewFSDagger(t, ctx, &merkledag.ComboService{
+// 		Read:  recovery.NewNodeGetter(dag, NewRecoverer(dag)),
+// 		Write: dag,
+// 	})
+// 	dr.Morpher = func(nd format.Node) (format.Node, error) {
+// 		if len(nd.Links()) == 0 {
+// 			return nd, nil
+// 		}
+
+// 		return Encode(ctx, dag, nd, 3)
+// 	}
+
+// 	root :=
+// 		dr.NewDir("root",
+// 			dr.RandNode("file1"),
+// 			dr.RandNode("file2"),
+// 			dr.NewDir("dir1",
+// 				dr.RandNode("file3"),
+// 				dr.RandNode("file4"),
+// 			),
+// 			dr.NewDir("dir2",
+// 				dr.RandNode("file5"),
+// 			),
+// 		)
+
+// 	dr.Remove("file1")
+// 	dr.Remove("dir2")
+// 	dr.Remove("file4")
+
+// 	root.Validate()
+// }

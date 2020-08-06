@@ -7,12 +7,10 @@ import (
 	recovery "github.com/Wondertan/go-ipfs-recovery"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
 )
 
 // Custom codec for Entanglement recovery Nodes.
-const Codec = 0x701          // random number // TODO Register in IPFS codec table.
-const CodecRedundant = 0x702 // random number // TODO Register in IPFS codec table.
+const Codec = 0x701 // random number // TODO Register in IPFS codec table.
 
 func init() {
 	// register global decoder

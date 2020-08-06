@@ -36,8 +36,12 @@ func NewNode(proto *merkledag.ProtoNode) *Node {
 	return nd
 }
 
+func (n *Node) Proto() *merkledag.ProtoNode {
+	return n.ProtoNode
+}
+
 func (n *Node) Recoverability() recovery.Recoverability {
-	return alpha
+	return len(n.recovery)
 }
 
 func (n *Node) RecoveryLinks() []*format.Link {
