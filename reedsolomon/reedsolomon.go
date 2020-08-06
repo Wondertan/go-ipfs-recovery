@@ -11,7 +11,7 @@ import (
 )
 
 // Custom codec for Reed-Solomon recovery Nodes.
-const Codec = 0x700 // random number // TODO Register in IPFS codec table.
+const Codec uint64 = 0x700 // random number // TODO Register in IPFS codec table.
 
 func init() {
 	// register global decoder
@@ -26,8 +26,8 @@ type reedSolomon struct {
 	dag format.DAGService
 }
 
-// NewRestorer creates new Reed-Solomon Recoverer.
-func NewRestorer(dag format.DAGService) recovery.Recoverer {
+// NewRecoverer creates new Reed-Solomon Recoverer.
+func NewRecoverer(dag format.DAGService) recovery.Recoverer {
 	return &reedSolomon{dag: dag}
 }
 
@@ -46,5 +46,10 @@ func (rs *reedSolomon) Recover(ctx context.Context, nd recovery.Node, rids ...ci
 }
 
 func (rs *reedSolomon) Encode(ctx context.Context, nd format.Node, r recovery.Recoverability) (recovery.Node, error) {
+	rd, ok := nd.(recovery.Node)
+	if ok {
+		return rd, nil
+	}
+
 	return Encode(ctx, rs.dag, nd, r)
 }

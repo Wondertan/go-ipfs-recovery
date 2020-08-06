@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipfs/go-merkledag"
 )
 
 var log = logging.Logger("recovery")
@@ -25,6 +26,10 @@ type Node interface {
 
 	// RecoveryLinks lists links to all recovery Nodes.
 	RecoveryLinks() []*format.Link
+
+	// FIXME This is awful, but there is no workaround fot that. IPFS is very strict about using only ProtoNode
+	//  in multiple cases.
+	Proto() *merkledag.ProtoNode
 }
 
 type Recoverer interface {
