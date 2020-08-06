@@ -53,8 +53,7 @@ func (g *getter) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
 	case nil:
 	}
 
-	g.maybeParent(nd)
-	return nd, nil
+	return g.maybeParent(nd), nil
 }
 
 // GetMany restores missing nodes on the fly, if possible.
@@ -75,7 +74,7 @@ func (g *getter) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.Nod
 			select {
 			case no, ok := <-ch:
 				if ok && no.Err == nil {
-					g.maybeParent(no.Node)
+					no.Node = g.maybeParent(no.Node)
 
 					select {
 					case out <- no:
@@ -107,7 +106,7 @@ func (g *getter) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.Nod
 
 				// finally send restored nodes.
 				for _, nd := range nds {
-					g.maybeParent(nd) // restored nodes can also be parents.
+					nd = g.maybeParent(nd) // restored nodes can also be parents.
 
 					select {
 					case out <- &format.NodeOption{Node: nd}:
@@ -125,10 +124,10 @@ func (g *getter) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.Nod
 }
 
 // maybeParent caches the given node if it's a parent for possible future restorations.
-func (g *getter) maybeParent(nd format.Node) {
+func (g *getter) maybeParent(nd format.Node) format.Node {
 	rn, ok := nd.(Node)
 	if !ok {
-		return
+		return nd
 	}
 
 	cp := rn.Copy().(Node) // it is better to make a copy here, since node can be altered by the caller.
@@ -140,6 +139,8 @@ func (g *getter) maybeParent(nd format.Node) {
 	if FetchRedundant {
 		go g.fetchRedundant(cp)
 	}
+
+	return rn.Proto()
 }
 
 // fetchRedundant triggers fetching of redundant nodes linked to parent.

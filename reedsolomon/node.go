@@ -14,8 +14,6 @@ import (
 	cpb "github.com/Wondertan/go-ipfs-recovery/reedsolomon/pb"
 )
 
-// TODO Do not save sizes of all links independently as they are always the same.
-
 // Node is a recovery Node based ob Reed-Solomon coding.
 type Node struct {
 	*merkledag.ProtoNode
@@ -23,12 +21,22 @@ type Node struct {
 	recovery []*format.Link
 	cache    []byte
 	cid      cid.Cid
+	builder  cid.Builder
 }
 
-func NewNode(proto *merkledag.ProtoNode) *Node {
-	nd := &Node{ProtoNode: proto.Copy().(*merkledag.ProtoNode)}
-	nd.SetCidBuilder(nd.CidBuilder().WithCodec(Codec))
-	return nd
+func NewNode(nd format.Node) (*Node, error) {
+	pnd, ok := nd.(*merkledag.ProtoNode)
+	if !ok {
+		return nil, fmt.Errorf("reedsolomon: Node must be proto")
+	}
+
+	rnd := &Node{ProtoNode: pnd.Copy().(*merkledag.ProtoNode)}
+	rnd.SetCidBuilder(pnd.CidBuilder())
+	return rnd, nil
+}
+
+func (n *Node) Proto() *merkledag.ProtoNode {
+	return n.ProtoNode
 }
 
 func (n *Node) Recoverability() recovery.Recoverability {
@@ -46,7 +54,7 @@ func (n *Node) AddRedundantNode(nd format.Node) {
 
 	n.cache = nil
 	n.recovery = append(n.recovery, &format.Link{
-		Name: strconv.Itoa(len(n.recovery)),
+		Name: strconv.Itoa(len(n.recovery)), // TODO Do we need a name?
 		Size: uint64(len(nd.RawData())),
 		Cid:  nd.Cid(),
 	})
@@ -103,6 +111,7 @@ func (n *Node) String() string {
 func (n *Node) Copy() format.Node {
 	nd := new(Node)
 	nd.ProtoNode = n.ProtoNode.Copy().(*merkledag.ProtoNode)
+	nd.builder = n.builder
 	l := len(n.recovery)
 	if l > 0 {
 		nd.recovery = make([]*format.Link, l)
@@ -238,4 +247,13 @@ func (n *Node) RemoveNodeLink(name string) error {
 func (n *Node) SetData(d []byte) {
 	n.cache = nil
 	n.ProtoNode.SetData(d)
+}
+
+func (n *Node) SetCidBuilder(b cid.Builder) {
+	n.builder = b.WithCodec(Codec)
+	n.cid = cid.Undef
+}
+
+func (n *Node) CidBuilder() cid.Builder {
+	return n.builder
 }

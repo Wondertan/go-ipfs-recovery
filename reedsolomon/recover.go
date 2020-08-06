@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
 	"github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-varint"
 	"github.com/templexxx/reedsolomon"
 
 	"github.com/Wondertan/go-ipfs-recovery"
@@ -37,9 +38,9 @@ outer:
 		ids[i+lpnd] = l.Cid
 	}
 
-	// track `lost` or `not lost` blocks indexes with actual data.
-	var lst, nlst []int
-	bs := make([][]byte, lpnd+lrpnd)
+	// track `not lost` or `lost` blocks indexes with actual data.
+	var nlst, lst []int
+	bs, s := make([][]byte, lpnd+lrpnd), pnd.RecoveryLinks()[0].Size
 
 	for i, ndp := range format.GetNodes(ctx, dag, ids) {
 		nd, err := ndp.Get(ctx)
@@ -47,15 +48,21 @@ outer:
 		case context.DeadlineExceeded, context.Canceled:
 			return nil, err
 		case nil:
-			bs[i] = nd.RawData()
-			lst = append(lst, i)
-		default:
-			bs[i] = make([]byte, pnd.Links()[0].Size) // the size is always the same, validated by Encode.
+			bs[i] = make([]byte, s)
+			if i < lpnd {
+				n := varint.PutUvarint(bs[i], uint64(len(nd.RawData())))
+				copy(bs[i][n:], nd.RawData())
+			} else {
+				copy(bs[i], nd.RawData())
+			}
 			nlst = append(nlst, i)
+		default:
+			bs[i] = make([]byte, s)
+			lst = append(lst, i)
 		}
 	}
 
-	if lrpnd < len(nlst) {
+	if lrpnd < len(lst) {
 		return nil, recovery.ErrRecoveryExceeded
 	}
 
@@ -64,20 +71,31 @@ outer:
 		return nil, err
 	}
 
-	err = rs.Reconst(bs, lst, nlst)
+	err = rs.Reconst(bs, nlst, lst)
 	if err != nil {
 		return nil, err
 	}
 
 	// decode and save recomputed nodes, filter and return known to be lost.
 	nds := make([]format.Node, 0, len(lost))
-	for _, i := range nlst {
+	for _, i := range lst {
 		id := ids[i]
 		if id.Equals(wrongCid) {
 			id = pnd.Links()[i].Cid
 		}
 
-		b, _ := blocks.NewBlockWithCid(bs[i], id)
+		var b blocks.Block
+		if i < lpnd {
+			s, n, err := varint.FromUvarint(bs[i])
+			if err != nil {
+				return nil, err
+			}
+
+			b, _ = blocks.NewBlockWithCid(bs[i][n:int(s)+n], id)
+		} else {
+			b, _ = blocks.NewBlockWithCid(bs[i], id)
+		}
+
 		nd, err := format.Decode(b)
 		if err != nil {
 			return nil, err

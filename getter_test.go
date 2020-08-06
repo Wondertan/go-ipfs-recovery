@@ -135,3 +135,7 @@ func (f *fakeNode) Recoverability() Recoverability {
 func (f *fakeNode) RecoveryLinks() []*format.Link {
 	return nil
 }
+
+func (f *fakeNode) Proto() *merkledag.ProtoNode {
+	return f.ProtoNode
+}
