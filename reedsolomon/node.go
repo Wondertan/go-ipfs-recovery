@@ -21,6 +21,7 @@ type Node struct {
 	recovery []*format.Link
 	cache    []byte
 	cid      cid.Cid
+	builder  cid.Builder
 }
 
 func NewNode(nd format.Node) (*Node, error) {
@@ -30,8 +31,12 @@ func NewNode(nd format.Node) (*Node, error) {
 	}
 
 	rnd := &Node{ProtoNode: pnd.Copy().(*merkledag.ProtoNode)}
-	rnd.SetCidBuilder(rnd.CidBuilder().WithCodec(Codec))
+	rnd.SetCidBuilder(pnd.CidBuilder())
 	return rnd, nil
+}
+
+func (n *Node) Proto() *merkledag.ProtoNode {
+	return n.ProtoNode
 }
 
 func (n *Node) Recoverability() recovery.Recoverability {
@@ -106,6 +111,7 @@ func (n *Node) String() string {
 func (n *Node) Copy() format.Node {
 	nd := new(Node)
 	nd.ProtoNode = n.ProtoNode.Copy().(*merkledag.ProtoNode)
+	nd.builder = n.builder
 	l := len(n.recovery)
 	if l > 0 {
 		nd.recovery = make([]*format.Link, l)
@@ -241,4 +247,13 @@ func (n *Node) RemoveNodeLink(name string) error {
 func (n *Node) SetData(d []byte) {
 	n.cache = nil
 	n.ProtoNode.SetData(d)
+}
+
+func (n *Node) SetCidBuilder(b cid.Builder) {
+	n.builder = b.WithCodec(Codec)
+	n.cid = cid.Undef
+}
+
+func (n *Node) CidBuilder() cid.Builder {
+	return n.builder
 }

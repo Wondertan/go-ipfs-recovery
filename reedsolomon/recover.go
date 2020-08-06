@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
 	"github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-varint"
 	"github.com/templexxx/reedsolomon"
 
 	"github.com/Wondertan/go-ipfs-recovery"
@@ -48,7 +49,12 @@ outer:
 			return nil, err
 		case nil:
 			bs[i] = make([]byte, s)
-			copy(bs[i], nd.RawData())
+			if i < lpnd {
+				n := varint.PutUvarint(bs[i], uint64(len(nd.RawData())))
+				copy(bs[i][n:], nd.RawData())
+			} else {
+				copy(bs[i], nd.RawData())
+			}
 			nlst = append(nlst, i)
 		default:
 			bs[i] = make([]byte, s)
@@ -78,7 +84,18 @@ outer:
 			id = pnd.Links()[i].Cid
 		}
 
-		b, _ := blocks.NewBlockWithCid(bs[i][:pnd.Links()[i].Size], id)
+		var b blocks.Block
+		if i < lpnd {
+			s, n, err := varint.FromUvarint(bs[i])
+			if err != nil {
+				return nil, err
+			}
+
+			b, _ = blocks.NewBlockWithCid(bs[i][n:int(s)+n], id)
+		} else {
+			b, _ = blocks.NewBlockWithCid(bs[i], id)
+		}
+
 		nd, err := format.Decode(b)
 		if err != nil {
 			return nil, err
