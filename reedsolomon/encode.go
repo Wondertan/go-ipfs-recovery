@@ -2,7 +2,6 @@ package reedsolomon
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
@@ -14,24 +13,30 @@ import (
 // Encode applies Reed-Solomon coding on the given IPLD Node promoting it to a recovery Node.
 // Use `r` to specify needed amount of generated recovery Nodes.
 func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recovery.Recoverability) (*Node, error) {
-	err := ValidateNode(nd)
+	rd, err := NewNode(nd)
 	if err != nil {
 		return nil, err
 	}
 
-	l := len(nd.Links())
-	bs := make([][]byte, l+r)
-	for i, ndp := range format.GetDAG(ctx, dag, nd) {
-		nd, err := ndp.Get(ctx)
+	nds, s := make([]format.Node, len(nd.Links())), 0
+	for i, l := range nd.Links() {
+		nds[i], err = l.GetNode(ctx, dag)
 		if err != nil {
 			return nil, err
 		}
 
-		bs[i] = nd.RawData()
+		if len(nds[i].RawData()) > s { // finding the biggest child
+			s = len(nds[i].RawData())
+		}
 	}
 
-	for i := range bs[l:] {
-		bs[i+l] = make([]byte, nd.Links()[0].Size)
+	l := len(nd.Links())
+	bs := make([][]byte, l+r)
+	for i := range bs {
+		bs[i] = make([]byte, s)
+		if i < l {
+			copy(bs[i], nds[i].RawData())
+		}
 	}
 
 	rs, err := reedsolomon.New(l, r)
@@ -44,7 +49,6 @@ func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recove
 		return nil, err
 	}
 
-	rd := NewNode(nd.(*merkledag.ProtoNode))
 	for _, b := range bs[l:] {
 		rnd := merkledag.NewRawNode(b)
 		err = dag.Add(ctx, rnd)
@@ -60,27 +64,5 @@ func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recove
 		return nil, err
 	}
 
-	return rd, dag.Remove(ctx, nd.Cid())
-}
-
-// ValidateNode checks whenever the given IPLD Node can be applied with Reed-Solomon coding.
-func ValidateNode(nd format.Node) error {
-	_, ok := nd.(*merkledag.ProtoNode)
-	if !ok {
-		return fmt.Errorf("reedsolomon: node must be proto")
-	}
-
-	ls := nd.Links()
-	if len(ls) == 0 {
-		return fmt.Errorf("reedsolomon: node must have links")
-	}
-
-	size := ls[0].Size
-	for _, l := range ls[1:] {
-		if l.Size != size {
-			return fmt.Errorf("reedsolomon: node's links must have equal size")
-		}
-	}
-
-	return nil
+	return rd, dag.Remove(ctx, nd.Cid()) // there is no need to keep original
 }
