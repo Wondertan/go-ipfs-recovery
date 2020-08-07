@@ -6,9 +6,12 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/Wondertan/go-ipfs-recovery"
 )
+
+var log = logging.Logger("recovery")
 
 // Custom codec for Reed-Solomon recovery Nodes.
 const Codec uint64 = 0x700 // random number // TODO Register in IPFS codec table.

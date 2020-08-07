@@ -2,6 +2,7 @@ package reedsolomon
 
 import (
 	"context"
+	"strings"
 
 	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -45,8 +46,6 @@ outer:
 	for i, ndp := range format.GetNodes(ctx, dag, ids) {
 		nd, err := ndp.Get(ctx)
 		switch err {
-		case context.DeadlineExceeded, context.Canceled:
-			return nil, err
 		case nil:
 			bs[i] = make([]byte, s)
 			if i < lpnd {
@@ -55,10 +54,18 @@ outer:
 			} else {
 				copy(bs[i], nd.RawData())
 			}
+
 			nlst = append(nlst, i)
+			continue
+		case context.DeadlineExceeded, context.Canceled:
+			return nil, err
 		default:
 			bs[i] = make([]byte, s)
 			lst = append(lst, i)
+		}
+
+		if !strings.Contains(err.Error(), "failed to fetch all nodes") { //
+			log.Errorf("Failed to get child Node(%s) for recovery: %s", ids[i].String(), err)
 		}
 	}
 
@@ -117,6 +124,6 @@ outer:
 var wrongCid, _ = cid.Prefix{
 	Version:  1,
 	Codec:    1,
-	MhType:   multihash.IDENTITY,
+	MhType:   multihash.SHA2_256,
 	MhLength: 1,
 }.Sum([]byte("f"))
