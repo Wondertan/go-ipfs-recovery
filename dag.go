@@ -12,7 +12,6 @@ func EncodeDAG(ctx context.Context, dag format.NodeGetter, e Encoder, nd format.
 		return nd, nil
 	}
 
-	nd = nd.Copy()
 	for _, l := range nd.Links() {
 		nd, err := l.GetNode(ctx, dag)
 		if err != nil {
