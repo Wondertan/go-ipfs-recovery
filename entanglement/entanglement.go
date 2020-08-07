@@ -27,13 +27,12 @@ type entangler struct {
 }
 
 // NewRestorer creates a new Entanglement Recoverer.
-func NewRestorer(dag format.DAGService) recovery.Recoverer {
+func NewRecoverer(dag format.DAGService) recovery.Recoverer {
 	return &entangler{dag: dag}
 }
 
 // NewEncoder creates new Entanglement Encoder.
-func NewEncoder(dag format.DAGService, nd format.Node) recovery.Encoder {
-
+func NewEncoder(dag format.DAGService) recovery.Encoder {
 	return &entangler{dag: dag}
 }
 
@@ -49,4 +48,19 @@ func (ent *entangler) Recover(ctx context.Context, nd recovery.Node, rids ...cid
 func (ent *entangler) Encode(ctx context.Context, nd format.Node, r recovery.Recoverability) (recovery.Node, error) {
 
 	return nil, nil
+}
+
+// XORByteSlice returns an XOR slice of 2 input slices
+func XORByteSlice(a []byte, b []byte) ([]byte, error) {
+	if len(a) != len(b) {
+		return nil, fmt.Errorf("length of byte slices is not equivalent: %d != %d", len(a), len(b))
+	}
+
+	buf := make([]byte, len(a))
+
+	for i := range a {
+		buf[i] = a[i] ^ b[i]
+	}
+
+	return buf, nil
 }

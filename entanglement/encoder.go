@@ -2,7 +2,6 @@ package entanglement
 
 import (
 	"context"
-	"fmt"
 
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
@@ -43,17 +42,17 @@ func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recove
 		}
 	}
 
-	for i, b := range bs[ln:] {
+	for i := range bs[ln:] {
 		if i == 0 {
-			b = bs[0]
+			bs[ln] = bs[0]
 		} else {
-			b, err = XORByteSlice(bs[ln+i], bs[i])
+			bs[ln+i], err = XORByteSlice(bs[ln+i-1], bs[i])
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		rnd := merkledag.NewRawNode(b)
+		rnd := merkledag.NewRawNode(bs[ln+i])
 		err = dag.Add(ctx, rnd)
 		if err != nil {
 			return nil, err
@@ -68,19 +67,4 @@ func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recove
 	}
 
 	return rd, dag.Remove(ctx, nd.Cid())
-}
-
-// XORByteSlice returns an XOR slice of 2 input slices
-func XORByteSlice(a []byte, b []byte) ([]byte, error) {
-	if len(a) != len(b) {
-		return nil, fmt.Errorf("length of byte slices is not equivalent: %d != %d", len(a), len(b))
-	}
-
-	buf := make([]byte, len(a))
-
-	for i, _ := range a {
-		buf[i] = a[i] ^ b[i]
-	}
-
-	return buf, nil
 }

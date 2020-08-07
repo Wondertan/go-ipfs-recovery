@@ -19,12 +19,7 @@ import (
 // Node is a recovery Node based on Entanglement coding.
 type Node struct {
 	*merkledag.ProtoNode
-
-	NextNode *format.Link
-	recovery []*format.Link // 0->previous; 1-> next
-	alpha    int
-	s        int
-	p        int
+	recovery []*format.Link
 
 	cache []byte
 	cid   cid.Cid
