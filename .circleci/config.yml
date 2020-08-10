@@ -1,0 +1,14 @@
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.1.0
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.14
+    working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
+    steps:
+      - checkout
+      - run: go get -v ./...
+      - run: go test -v -race -count 10 -coverprofile=coverage.txt -covermode=atomic ./...
+      - codecov/upload:
+          file: coverage.txt
