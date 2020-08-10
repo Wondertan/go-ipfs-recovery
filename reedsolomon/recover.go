@@ -64,7 +64,7 @@ outer:
 			lst = append(lst, i)
 		}
 
-		if !strings.Contains(err.Error(), "failed to fetch all nodes") { //
+		if !strings.Contains(err.Error(), "failed to fetch all nodes") {
 			log.Errorf("Failed to get child Node(%s) for recovery: %s", ids[i].String(), err)
 		}
 	}

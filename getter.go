@@ -59,14 +59,14 @@ func (g *getter) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
 // GetMany restores missing nodes on the fly, if possible.
 // All given keys have to be related to one parent. // TODO Remove this requirement
 func (g *getter) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.NodeOption {
-	ch := g.get.GetMany(ctx, cids)
-	out := make(chan *format.NodeOption, len(cids))
-
 	// track remaining nodes
 	lost := cid.NewSet()
 	for _, id := range cids {
 		lost.Add(id)
 	}
+
+	ch := g.get.GetMany(ctx, cids)
+	out := make(chan *format.NodeOption, len(cids))
 
 	go func() {
 		defer close(out)
