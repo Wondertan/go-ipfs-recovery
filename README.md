@@ -83,6 +83,14 @@ Using it for benchmarking and [testing Recovery](https://github.com/avalonche/bi
 
 - Implementations for latest `go` IPLD version and for `js` as well.
 
+## Tryout
+
+1. Build [forked IPFS](https://github.com/Wondertan/go-ipfs/tree/recovery)
+2. Encode **ANY** IPFS content: `ipfs recovery encode <path>`.
+3. List all the blocks encoded content consist of: `ipfs refs <enc_cid> -r`
+4. Remove any random blocks yourself from the given list: `ipfs block rm ...<cid>`
+5. Be amazed after seeing that it is still possible to get your content back: `ipfs get <enc_cid>`
+
 ## Contributors
 
 - [@Wondertan](https://github.com/Wondertan)
