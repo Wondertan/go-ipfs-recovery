@@ -18,6 +18,7 @@ bringing data recovery algorithms into IPFS protocol.
 - [Algorithms](#algorithms)
 - [Related Work](#related-work)
 - [Future Work](#future-work)
+- [Tryout](#tryout)
 - [Contributors](#contributors)
 - [License](#license)
 
@@ -41,7 +42,7 @@ node churn, network issues, or physical storage damage.
 
 The Recovery currently points to the main IPFS implementation in Golang and follows all its development guidelines and
 best practices. The Golang Recovery implementation is a fully modular library with clean API boundaries that aims to 
-provide convenient use and excellent abstraction for all current and future implementation.
+provide convenient use and excellent abstraction for all current and future implementations.
 
 ## Algorithms
 
@@ -72,7 +73,8 @@ full featured management for Recovery, like re-encoding, manual recovery and alg
 ### Testground Plans
 
 IPFS ecosystem recently launched new project aimed to test p2p system on large scale to simulate real world behavior. 
-Using it for benchmarking and [testing Recovery](https://github.com/avalonche/bitswap-recovery) is a must, as it goals to improve IPFS protocol.
+Using it for benchmarking and [testing Recovery](https://github.com/avalonche/bitswap-recovery) is a must, 
+as it goals to improve IPFS protocol.
 
 ## Future Work
 
@@ -83,10 +85,13 @@ Using it for benchmarking and [testing Recovery](https://github.com/avalonche/bi
 
 - Implementations for latest `go` IPLD version and for `js` as well.
 
+- Extensive Testground simulation to gather real-world resiliency benchmarks and
+  to examine various other erasure codes
+
 ## Tryout
 
 1. Build [forked IPFS](https://github.com/Wondertan/go-ipfs/tree/recovery)
-2. Encode **ANY** IPFS content: `ipfs recovery encode <path>`.
+2. Encode **ANY** IPFS content: `ipfs recovery encode <path>`
 3. List all the blocks encoded content consist of: `ipfs refs <enc_cid> -r`
 4. Remove any random blocks yourself from the given list: `ipfs block rm ...<cid>`
 5. Be amazed after seeing that it is still possible to get your content back: `ipfs get <enc_cid>`
