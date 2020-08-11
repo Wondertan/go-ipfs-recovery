@@ -6,7 +6,7 @@
 # IPFS Recovery
 
 > The project was originally started as a [submission](https://hack.ethglobal.co/hackfs/teams/recBTnbaJZ9h8JJUE/rec909D6romwHglDV) 
-> for the [HackFS](https://hackfs.com/) hackaton. Also check-out our [presentation](https://drive.google.com/file/d/1wyO7Zt5gAXuQUOh2Nlf_lhEjdZO2MelQ/view).
+> for the [HackFS](https://hackfs.com/) hackathon. Also check-out our [presentation](https://drive.google.com/file/d/1wyO7Zt5gAXuQUOh2Nlf_lhEjdZO2MelQ/view).
 
 Building a way for content to persist permanently despite any damage to data and the network by  
 bringing data recovery algorithms into IPFS protocol.
@@ -24,14 +24,14 @@ bringing data recovery algorithms into IPFS protocol.
 
 ## Background
 
-The IPFS project, in its core, tries to upgrade the Internet to make it better in multiple ways. One of the goals is to 
+The IPFS project, at its core, tries to upgrade the Internet to make it better in multiple ways. One of the goals is to 
 make the Web permanent. This IPFS characteristic is very promising, but still not in the state of the art form and 
-requires more RnD in that vector. On the other side, Computer Science, for many years of existence, did multiple 
-inventions related to data and the ways to make it persistent against multiple data-loss factors within mostly 
+requires more RnD in that vector. On the other side, Computer Science, for many years of existence, has plenty of research
+related to data and the ways to make it persistent against multiple data-loss factors within mostly 
 centralized systems. On the way to permanency, those inventions can apply to IPFS protocol taking the most out of them, 
 and then newer innovations might take place instead after gathering all the experience. Further work in this avenue can 
-also ensure integrity even in doomsday scenarios where large portions of the network can go down while it is still possible 
-to recover that content. Though there are multiple discussions in the IPFS ecosystem regarding the data persevering mechanisms, 
+also ensure integrity even in doomsday scenarios where large portions of the network can go down, allowing content to 
+still be recovered. Though there are multiple discussions in the IPFS ecosystem regarding the data persevering mechanisms, 
 like erasure codings, none of them were actually implemented.
 
 The IPFS Recovery project brings data recovery algorithms into IPFS with the above aim. It does so by creating new IPLD 
@@ -53,8 +53,8 @@ coding.
 
 ### Alpha Entanglements
 
-As a next step, novel [Alpha Entanglements](https://arxiv.org/pdf/1810.02974.pdf) schema have been chosen. It provides
-better performance and higher recovery ratio comparing with the former algorithm. In particular, entaglements are
+As a next step, novel [Alpha Entanglements](https://arxiv.org/pdf/1810.02974.pdf) schema has been chosen. It provides
+better performance and higher recovery ratio comparing with the former algorithm. In particular, entanglements are
 interesting as they provide the ability to create self-healing networks.
 
 ## Related Work
@@ -62,7 +62,7 @@ interesting as they provide the ability to create self-healing networks.
 ### IPFS Fork
 
 As Recovery follows IPFS ecosystem modularity best practises, 
-it [fork](https://github.com/Wondertan/go-ipfs/tree/recovery) is integrated in a just a few small changes. 
+its [fork](https://github.com/Wondertan/go-ipfs/tree/recovery) is integrated in a just a few small changes. 
 
 First, it covers DAG sessions
 with custom NodeGetter that can recover nodes on the fly if content is requested but not found.
