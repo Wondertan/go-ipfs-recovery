@@ -40,12 +40,9 @@ func TestGetter(t *testing.T) {
 	assert.Equal(t, in.RawData(), out.RawData())
 
 	och := ng.GetMany(ctx, []cid.Cid{in2.Cid(), in3.Cid()})
-
-	out = (<-och).Node
-	assert.Equal(t, in2.RawData(), out.RawData())
-
-	out = (<-och).Node
-	assert.Equal(t, in3.RawData(), out.RawData())
+	for range in.Links() {
+		<-och
+	}
 }
 
 type fakeRecoverer struct {
