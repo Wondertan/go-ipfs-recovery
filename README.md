@@ -1,4 +1,4 @@
-[![Build](https://img.shields.io/circleci/build/github/Wondertan/go-ipfs-recovery.svg?style=svg)](https://img.shields.io/circleci/build/github/Wondertan/go-ipfs-recovery)
+[![Build](https://img.shields.io/circleci/build/github/Wondertan/go-ipfs-recovery.svg?style=svg)](https://circleci.com/gh/Wondertan/go-ipfs-recovery)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Wondertan/go-ipfs-recovery)](https://goreportcard.com/report/github.com/Wondertan/go-ipfs-recovery)
 [![License](https://img.shields.io/github/license/Wondertan/go-ipfs-recovery.svg?maxAge=2592000)](https://github.com/Wondertan/go-ipfs-recovery/blob/master/LICENSE)
 [![codecov](https://codecov.io/gh/Wondertan/go-ipfs-recovery/branch/master/graph/badge.svg)](https://codecov.io/gh/Wondertan/go-ipfs-recovery)
