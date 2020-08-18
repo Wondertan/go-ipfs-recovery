@@ -2,7 +2,6 @@ package reedsolomon
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
@@ -29,23 +28,9 @@ type reedSolomon struct {
 	dag format.DAGService
 }
 
-// NewRecoverer creates new Reed-Solomon Recoverer.
-func NewRecoverer(dag format.DAGService) recovery.Recoverer {
-	return &reedSolomon{dag: dag}
-}
-
 // NewEncoder creates new Reed-Solomon Encoder.
 func NewEncoder(dag format.DAGService) recovery.Encoder {
 	return &reedSolomon{dag: dag}
-}
-
-func (rs *reedSolomon) Recover(ctx context.Context, nd recovery.Node, rids ...cid.Cid) ([]format.Node, error) {
-	pnd, ok := nd.(*Node)
-	if !ok {
-		return nil, fmt.Errorf("reedsolomon: wrong Node type")
-	}
-
-	return Recover(ctx, rs.dag, pnd, rids...)
 }
 
 func (rs *reedSolomon) Encode(ctx context.Context, nd format.Node, r recovery.Recoverability) (recovery.Node, error) {

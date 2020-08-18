@@ -12,10 +12,6 @@ import (
 	"github.com/ipfs/go-verifcid"
 )
 
-// FetchRedundant defines whenever redundant nodes have to be always fetched or only on restoration.
-// TODO This better be new IPFS config field.
-var FetchRedundant = false
-
 // getter implements NodeGetter capable for restoring missing DAG nodes using redundant nodes.
 // It is important for restoration to traverse the whole DAG using the only one getter, cause it is the only way to
 // remember reverse links to prnts, unless DAGService interface is changed.
@@ -156,19 +152,25 @@ func (ds *dagSession) recover(ctx context.Context, id cid.Cid) (format.Node, err
 		return nil, format.ErrNotFound
 	}
 
-	log.Infof("Successful recovery(%s)", id)
-	return ds.decode(nds[0])
+	select {
+	case no := <-nds:
+		if no.Err != nil {
+			log.Warnf("Recovery attempt failed(%s): %s", id, err)
+			return nil, format.ErrNotFound
+		}
+
+		log.Infof("Successful recovery(%s)", id)
+		return ds.decode(no.Node)
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (ds *dagSession) fetcher() exchange.Fetcher {
-	if ds.f != nil {
-		return ds.f
-	}
-
 	ds.fo.Do(func() {
 		ex, ok := ds.ex.(exchange.SessionExchange)
 		if !ok {
-			ds.f = ex
+			ds.f = ds.ex
 			return
 		}
 
@@ -178,7 +180,7 @@ func (ds *dagSession) fetcher() exchange.Fetcher {
 	return ds.f
 }
 
-// decode transforms block into the Node and caches it, if it's a recovery Node.
+// decode transforms block into the Node and caches it, if it's a recovery one.
 func (ds *dagSession) decode(b blocks.Block) (format.Node, error) {
 	nd, err := format.Decode(b)
 	if err != nil {
@@ -190,41 +192,11 @@ func (ds *dagSession) decode(b blocks.Block) (format.Node, error) {
 		return nd, nil
 	}
 
-	cp := rn.Copy().(Node) // it is better to make a copy here, since node can be altered by the caller.
-
 	ds.pl.Lock()
-	ds.prnts[rn.Cid()] = cp
+	ds.prnts[rn.Cid()] = rn.Copy().(Node) // it is better to make a copy here, since node can be altered by the caller.
 	ds.pl.Unlock()
 
-	if FetchRedundant {
-		go ds.fetchRedundant(cp)
-	}
-
 	return rn.Proto(), nil
-}
-
-// fetchRedundant triggers fetching of redundant nodes linked to parent.
-func (ds *dagSession) fetchRedundant(nd Node) {
-	ids := make([]cid.Cid, len(nd.RecoveryLinks()))
-	for i, l := range nd.RecoveryLinks() {
-		ids[i] = l.Cid
-	}
-
-	// NOTE: Any Exchange always wraps some Blockstore, puts all the incoming blocks in it, and at first glance, putting them again does
-	// 	not make sense. However, does the exchange session and the recovery session share the same Blockstore?
-	// 	Who knows ¯\_(ツ)_/¯.
-
-	bs, err := ds.fetcher().GetBlocks(ds.ctx, ids)
-	if err != nil {
-		return
-	}
-
-	for b := range bs {
-		err := ds.bs.Put(b)
-		if err != nil {
-			log.Errorf("Failed to put recovery node(%s) in the Blockstore: %S", b.Cid(), err)
-		}
-	}
 }
 
 // getParentFor tries to find the parent gotten within the session for the given CID.
@@ -232,11 +204,11 @@ func (ds *dagSession) getParentFor(id cid.Cid) Node {
 	ds.pl.Lock()
 	defer ds.pl.Unlock()
 
-	for p, n := range ds.prnts {
+	for _, n := range ds.prnts {
 		for _, l := range n.Links() {
 			if l.Cid.Equals(id) {
 				// restoration reconstructs all linked nodes at fo hence parent can't be reused, so uncache it.
-				delete(ds.prnts, p)
+			//	delete(ds.prnts, p)
 				return n
 			}
 		}

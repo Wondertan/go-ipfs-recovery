@@ -2,7 +2,6 @@ package recovery
 
 import (
 	"context"
-	"errors"
 
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
@@ -12,9 +11,7 @@ import (
 
 var log = logging.Logger("recovery")
 
-var ErrRecoveryExceeded = errors.New("recovery: maximum recoverability exceeded")
-
-// Recoverability param for the Node defines the max amount of nodes that can be recovered from it.
+// Recoverability param defines max amount of Data Nodes that can be lost preserving recoverability.
 type Recoverability = int
 
 // Node wraps IPLD Node with an ability to recover lost linked Nodes.
@@ -35,7 +32,7 @@ type Node interface {
 type Recoverer interface {
 
 	// Recovers Nodes by ids from the recovery Node.
-	Recover(context.Context, Node, ...cid.Cid) ([]format.Node, error)
+	Recover(context.Context, Node, ...cid.Cid) (<-chan *format.NodeOption, error)
 }
 
 type Encoder interface {

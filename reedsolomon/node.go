@@ -3,7 +3,6 @@ package reedsolomon
 import (
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -54,7 +53,6 @@ func (n *Node) AddRedundantNode(nd format.Node) {
 
 	n.cache = nil
 	n.recovery = append(n.recovery, &format.Link{
-		Name: strconv.Itoa(len(n.recovery)), // TODO Do we need a name?
 		Size: uint64(len(nd.RawData())),
 		Cid:  nd.Cid(),
 	})
