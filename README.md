@@ -6,7 +6,8 @@
 # IPFS Recovery
 
 > The project was originally started as a [submission](https://hack.ethglobal.co/hackfs/teams/recBTnbaJZ9h8JJUE/rec909D6romwHglDV) 
-> for the [HackFS](https://hackfs.com/) hackathon. Also check-out our [presentation](https://drive.google.com/file/d/1wyO7Zt5gAXuQUOh2Nlf_lhEjdZO2MelQ/view).
+> for the [HackFS](https://hackfs.com/) hackathon and became Top-10 Finalist :trophy:.
+> Also check-out our [presentation](https://drive.google.com/file/d/1wyO7Zt5gAXuQUOh2Nlf_lhEjdZO2MelQ/view).
 
 Building a way for content to persist permanently despite any damage to data and the network by  
 bringing data recovery algorithms into IPFS protocol.
