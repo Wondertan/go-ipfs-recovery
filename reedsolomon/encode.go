@@ -11,6 +11,7 @@ import (
 	recovery "github.com/Wondertan/go-ipfs-recovery"
 )
 
+// TODO Refactor to use Shards
 // Encode applies Reed-Solomon coding on the given IPLD Node promoting it to a recovery Node.
 // Use `r` to specify needed amount of generated recovery Nodes.
 func Encode(ctx context.Context, dag format.DAGService, nd format.Node, r recovery.Recoverability) (*Node, error) {
